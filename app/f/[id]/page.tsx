@@ -3,12 +3,12 @@
 import { useState, useEffect, use } from "react";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Send, CheckCircle } from "lucide-react";
+import { Send, CheckCircle, Star } from "lucide-react";
 
 interface Question {
   id: string;
   text: string;
-  type: "text" | "textarea" | "dropdown" | "multiple_choice" | "single_choice";
+  type: "text" | "textarea" | "dropdown" | "multiple_choice" | "single_choice" | "date" | "time" | "rating";
   options: string[];
   required: boolean;
 }
@@ -16,6 +16,9 @@ interface Question {
 interface FormType {
   title: string;
   description: string;
+  successMessage?: string;
+  isActive?: boolean;
+  expiresAt?: string;
   questions: Question[];
 }
 
@@ -27,6 +30,23 @@ export default function PublicForm({ params }: { params: Promise<{ id: string }>
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(`draft_${id}`);
+    if (savedDraft) {
+      try {
+        setAnswers(JSON.parse(savedDraft));
+      } catch (e) {
+        console.error("Failed to parse draft");
+      }
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (Object.keys(answers).length > 0 && !submitted) {
+      localStorage.setItem(`draft_${id}`, JSON.stringify(answers));
+    }
+  }, [answers, id, submitted]);
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -57,6 +77,7 @@ export default function PublicForm({ params }: { params: Promise<{ id: string }>
         answers,
         submittedAt: serverTimestamp(),
       });
+      localStorage.removeItem(`draft_${id}`);
       setSubmitted(true);
     } catch (error: any) {
       console.error("Error submitting form:", error);
@@ -85,6 +106,30 @@ export default function PublicForm({ params }: { params: Promise<{ id: string }>
     );
   }
 
+  if (form) {
+    if (form.isActive === false) {
+      return (
+        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+          <div className="bg-[#111] p-8 rounded-3xl border border-white/5 text-center max-w-md w-full">
+            <h2 className="text-2xl font-bold text-white mb-2">Form Closed</h2>
+            <p className="text-gray-400">This form is no longer accepting responses.</p>
+          </div>
+        </div>
+      );
+    }
+    
+    if (form.expiresAt && new Date(form.expiresAt) < new Date()) {
+      return (
+        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+          <div className="bg-[#111] p-8 rounded-3xl border border-white/5 text-center max-w-md w-full">
+            <h2 className="text-2xl font-bold text-white mb-2">Form Expired</h2>
+            <p className="text-gray-400">This form has expired and is no longer accepting responses.</p>
+          </div>
+        </div>
+      );
+    }
+  }
+
   if (submitted) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -93,15 +138,31 @@ export default function PublicForm({ params }: { params: Promise<{ id: string }>
             <CheckCircle className="w-20 h-20 text-white" />
           </div>
           <h2 className="text-3xl font-bold text-white mb-4">Thank You!</h2>
-          <p className="text-gray-400 text-lg">Your response has been successfully recorded.</p>
+          <p className="text-gray-400 text-lg">{form?.successMessage || "Your response has been successfully recorded."}</p>
         </div>
       </div>
     );
   }
 
+  const totalQuestions = form.questions.length;
+  const answeredQuestions = form.questions.filter(q => {
+    const val = answers[q.id];
+    if (Array.isArray(val)) return val.length > 0;
+    return val !== undefined && val !== "";
+  }).length;
+  const progressPercentage = totalQuestions === 0 ? 0 : Math.round((answeredQuestions / totalQuestions) * 100);
+
   return (
     <div className="min-h-screen bg-black py-12 px-4 selection:bg-white/20 selection:text-white">
-      <div className="max-w-3xl mx-auto space-y-6">
+      {/* Sticky Progress Bar */}
+      <div className="fixed top-0 left-0 w-full h-1.5 bg-white/10 z-50">
+        <div 
+          className="h-full bg-white transition-all duration-300 ease-out"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+
+      <div className="max-w-3xl mx-auto space-y-6 pt-4">
         {/* Form Header */}
         <div className="bg-[#111] rounded-3xl p-10 border border-white/5">
           <h1 className="text-4xl font-black text-white mb-4 tracking-tight">{form.title}</h1>
@@ -214,6 +275,46 @@ export default function PublicForm({ params }: { params: Promise<{ id: string }>
                       </label>
                     );
                   })}
+                </div>
+              )}
+
+              {q.type === "date" && (
+                <input
+                  type="date"
+                  required={q.required}
+                  value={answers[q.id] || ""}
+                  onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                  className="w-full bg-[#1a1a1a] border-b-2 border-white/10 px-4 py-3 focus:outline-none focus:border-white focus:bg-[#222] transition-colors text-white text-lg rounded-t-xl"
+                  style={{ colorScheme: 'dark' }}
+                />
+              )}
+
+              {q.type === "time" && (
+                <input
+                  type="time"
+                  required={q.required}
+                  value={answers[q.id] || ""}
+                  onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                  className="w-full bg-[#1a1a1a] border-b-2 border-white/10 px-4 py-3 focus:outline-none focus:border-white focus:bg-[#222] transition-colors text-white text-lg rounded-t-xl"
+                  style={{ colorScheme: 'dark' }}
+                />
+              )}
+
+              {q.type === "rating" && (
+                <div className="flex gap-2 justify-center py-4">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      type="button"
+                      onClick={() => setAnswers({ ...answers, [q.id]: rating })}
+                      className={`p-4 rounded-2xl transition-all flex items-center justify-center border ${answers[q.id] === rating ? 'bg-white text-black border-white scale-110 shadow-lg shadow-white/10' : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#222] hover:text-white border-white/5'}`}
+                    >
+                      <Star className={`w-8 h-8 ${answers[q.id] === rating ? 'fill-black' : ''}`} />
+                    </button>
+                  ))}
+                  {q.required && !answers[q.id] && (
+                    <input type="number" required className="opacity-0 absolute w-0 h-0" />
+                  )}
                 </div>
               )}
             </div>

@@ -5,10 +5,10 @@ import { v4 as uuidv4 } from "uuid";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Save, GripVertical, Settings2, LayoutTemplate, CheckSquare, CircleDot, Copy, Check, ArrowRight } from "lucide-react";
+import { Plus, Trash2, Save, GripVertical, Settings2, LayoutTemplate, CheckSquare, CircleDot, Copy, Check, ArrowRight, Calendar, Clock, Star } from "lucide-react";
 import Link from "next/link";
 
-type QuestionType = "text" | "textarea" | "dropdown" | "multiple_choice" | "single_choice";
+type QuestionType = "text" | "textarea" | "dropdown" | "multiple_choice" | "single_choice" | "date" | "time" | "rating";
 
 interface Question {
   id: string;
@@ -23,6 +23,9 @@ export default function EditForm({ params }: { params: Promise<{ id: string }> }
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [expiresAt, setExpiresAt] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,9 @@ export default function EditForm({ params }: { params: Promise<{ id: string }> }
           const data = docSnap.data();
           setTitle(data.title || "");
           setDescription(data.description || "");
+          setSuccessMessage(data.successMessage || "");
+          setIsActive(data.isActive ?? true);
+          setExpiresAt(data.expiresAt || "");
           setQuestions(data.questions || []);
         } else {
           alert("Form not found!");
@@ -83,6 +89,9 @@ export default function EditForm({ params }: { params: Promise<{ id: string }> }
       await updateDoc(docRef, {
         title,
         description,
+        successMessage,
+        isActive,
+        expiresAt: expiresAt || null,
         questions,
       });
       setUpdatedFormId(id);
@@ -191,8 +200,41 @@ export default function EditForm({ params }: { params: Promise<{ id: string }> }
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Form Description (Optional)"
-          className="w-full text-lg text-gray-400 bg-transparent placeholder-gray-600 focus:outline-none"
+          className="w-full text-lg text-gray-400 bg-transparent placeholder-gray-600 focus:outline-none mb-6"
         />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-white/10">
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Success Message (Optional)</label>
+            <input
+              type="text"
+              value={successMessage}
+              onChange={(e) => setSuccessMessage(e.target.value)}
+              placeholder="e.g., Thanks for submitting!"
+              className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-white/30 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Expiry Date (Optional)</label>
+            <input
+              type="datetime-local"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-white/30 text-white"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-400 flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="w-5 h-5 bg-[#1a1a1a] border border-white/20 rounded focus:ring-white/30 accent-white"
+              />
+              Accepting Responses
+            </label>
+          </div>
+        </div>
       </div>
 
       {/* Questions List */}
@@ -266,6 +308,9 @@ export default function EditForm({ params }: { params: Promise<{ id: string }> }
                   <option value="dropdown">Dropdown</option>
                   <option value="multiple_choice">Checkboxes</option>
                   <option value="single_choice">Radio Buttons</option>
+                  <option value="date">Date</option>
+                  <option value="time">Time</option>
+                  <option value="rating">Rating Scale</option>
                 </select>
 
                 <div className="flex items-center justify-between pt-2">
@@ -323,6 +368,30 @@ export default function EditForm({ params }: { params: Promise<{ id: string }> }
         >
           <CircleDot className="w-4 h-4 text-white" />
           Radio
+        </button>
+        <div className="w-px h-6 bg-white/10 mx-1"></div>
+        <button
+          onClick={() => addQuestion("date")}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-white/10 text-gray-300 font-medium text-sm transition-all"
+        >
+          <Calendar className="w-4 h-4 text-white" />
+          Date
+        </button>
+        <div className="w-px h-6 bg-white/10 mx-1"></div>
+        <button
+          onClick={() => addQuestion("time")}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-white/10 text-gray-300 font-medium text-sm transition-all"
+        >
+          <Clock className="w-4 h-4 text-white" />
+          Time
+        </button>
+        <div className="w-px h-6 bg-white/10 mx-1"></div>
+        <button
+          onClick={() => addQuestion("rating")}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-white/10 text-gray-300 font-medium text-sm transition-all"
+        >
+          <Star className="w-4 h-4 text-white" />
+          Rating
         </button>
       </div>
     </div>

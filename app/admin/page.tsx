@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
-import { Plus, FileText, Calendar, Users, ArrowRight, Copy, Check } from "lucide-react";
+import { Plus, FileText, Calendar, Users, ArrowRight, Copy, Check, Pencil } from "lucide-react";
 
 interface FormType {
   id: string;
@@ -102,17 +102,26 @@ export default function AdminDashboard() {
                 <div className="bg-white/10 p-3 rounded-2xl border border-white/5">
                   <FileText className="w-6 h-6 text-white" />
                 </div>
-                <button
-                  onClick={(e) => copyToClipboard(e, form.id)}
-                  className="bg-[#222] hover:bg-[#333] border border-white/10 p-2 rounded-xl text-gray-400 hover:text-white transition-all z-20 group/copy"
-                  title="Copy Public Link"
-                >
-                  {copiedId === form.id ? (
-                    <Check className="w-4 h-4 text-green-400" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </button>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/admin/form/${form.id}`}
+                    className="bg-[#222] hover:bg-[#333] border border-white/10 p-2 rounded-xl text-gray-400 hover:text-white transition-all z-20"
+                    title="Edit Form"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Link>
+                  <button
+                    onClick={(e) => copyToClipboard(e, form.id)}
+                    className="bg-[#222] hover:bg-[#333] border border-white/10 p-2 rounded-xl text-gray-400 hover:text-white transition-all z-20 group/copy"
+                    title="Copy Public Link"
+                  >
+                    {copiedId === form.id ? (
+                      <Check className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
               <h3 className="text-xl font-bold text-white mb-2 line-clamp-1 relative z-10 pr-2">{form.title}</h3>
               <p className="text-gray-400 text-sm mb-6 line-clamp-2 flex-1 relative z-10">{form.description}</p>
